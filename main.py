@@ -8,24 +8,35 @@ print(device)
 loader = data.get_loader()
 print(len(loader))
 
-class NeuralNetwork(nn.Module):
-    def __init__(self, inputs, outputs):
+class CNN(nn.Module):
+    def __init__(self):
         super().__init__()
-        self.network = nn.Sequential(
-            nn.Linear(inputs, 160),
-            nn.ReLU(),
 
-            nn.Linear(160, 80),
+        self.features = nn.Sequential(
+            nn.Conv2d(3, 16, kernel_size=3, padding=1),
             nn.ReLU(),
+            nn.MaxPool2d(2),      # 128 -> 64
 
-            nn.Linear(80, 40),
+            nn.Conv2d(16, 32, kernel_size=3, padding=1),
             nn.ReLU(),
+            nn.MaxPool2d(2),      # 64 -> 32
 
-            nn.Linear(40, outputs)
+            nn.Conv2d(32, 64, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.MaxPool2d(2),      # 32 -> 16
         )
+
+        self.classifier = nn.Sequential(
+            nn.AdaptiveAvgPool2d((1, 1)),
+            nn.Flatten(),
+            nn.Linear(64, 1)
+        )
+
     def forward(self, x):
-        return  self.network(x)
-model = NeuralNetwork(30000, 1).to(device)
+        x = self.features(x)
+        x = self.classifier(x)
+        return x
+model = CNN().to(device)
 learning_rate = 0.001
 optimiser = optim.Adam(model.parameters(), lr=learning_rate)
 loss_fn = nn.BCEWithLogitsLoss()
@@ -34,7 +45,7 @@ for epoch in range(1000):
 
     epoch_loss = 0
     for images, labels in loader:
-        images = torch.flatten(images, start_dim=1, end_dim=3).to(device)
+        images = images.to(device)
         labels = labels.view(-1, 1).float().to(device)
         y_hat = model(images)
         loss = loss_fn(y_hat, labels)
